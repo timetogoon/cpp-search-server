@@ -72,8 +72,8 @@ public:
         documents_.emplace(document_id, DocumentData{ComputeAverageRating(ratings), status});
     }
 
-    template <typename Predikat>
-    vector<Document> FindTopDocuments(const string& raw_query, Predikat document_predicate) const {
+    template <typename Predicate>
+    vector<Document> FindTopDocuments(const string& raw_query, Predicate document_predicate) const {
         const Query query = ParseQuery(raw_query);
         auto matched_documents = FindAllDocuments(query, document_predicate);
         sort(matched_documents.begin(), matched_documents.end(),
@@ -202,8 +202,8 @@ private:
         return log(GetDocumentCount() * 1.0 / word_to_document_freqs_.at(word).size());
     }
 
-    template <typename Predikat>
-    vector<Document> FindAllDocuments(const Query& query, Predikat document_predicate) const {
+    template <typename Predicate>
+    vector<Document> FindAllDocuments(const Query& query, Predicate document_predicate) const {
         map<int, double> document_to_relevance;
         for (const string& word : query.plus_words) {
             if (word_to_document_freqs_.count(word) == 0) {
@@ -234,3 +234,221 @@ private:
         return matched_documents;
     }
 };
+
+// -------- Начало модульных тестов поисковой системы ----------
+
+// Тест проверяет, что поисковая система исключает стоп-слова при добавлении документов
+void TestExcludeStopWordsFromAddedDocumentContent() {
+    const int doc_id = 42;
+    const string content = "cat in the city"s;
+    const vector<int> ratings = { 1, 2, 3 };
+    {
+        SearchServer server;
+        server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+        const auto found_docs = server.FindTopDocuments("in"s);
+        ASSERT_EQUAL(found_docs.size(), 1u);
+        const Document& doc0 = found_docs[0];
+        ASSERT_EQUAL(doc0.id, doc_id);
+    }
+
+    {
+        SearchServer server;
+        server.SetStopWords("in the"s);
+        server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+        ASSERT_HINT(server.FindTopDocuments("in"s).empty(), "Stop words must be excluded from documents"s);
+    }
+}
+
+/*
+Разместите код остальных тестов здесь*/
+void TestAddDocuments() {
+    const int doc_id = 42;
+    const string content = "cat in the city"s;
+    const vector<int> ratings = { 1, 2, 3 };
+    {
+        SearchServer server;
+        server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+        const auto found_docs = server.FindTopDocuments("in"s);
+        ASSERT_EQUAL(found_docs.size(), 1u);
+        const Document& doc0 = found_docs[0];
+        ASSERT_EQUAL(doc0.id, doc_id);
+    }
+}
+
+void TestExludeDocumentsWithMinusWords()
+{
+    const int doc_id1 = 1;
+    const string content1 = "a colorful parrot with green wings and red tail is lost"s;
+    const vector<int> ratings1 = { 1, 2, 3 };
+    const int doc_id2 = 2;
+    const string content2 = "a grey hound with black ears is found at the railway station"s;
+    const vector<int> ratings2 = { 2, 3, 4 };
+    const int doc_id3 = 3;
+    const string content3 = "a white cat with long furry tail is found near the red square"s;
+    const vector<int> ratings3 = { 3, 4, 5 };
+    {
+        SearchServer server;
+        server.AddDocument(doc_id1, content1, DocumentStatus::ACTUAL, ratings1);
+        server.AddDocument(doc_id2, content2, DocumentStatus::ACTUAL, ratings2);
+        server.AddDocument(doc_id3, content3, DocumentStatus::ACTUAL, ratings3);
+        server.SetStopWords("is are was a an in the with near"s);
+        const auto found_docs = server.FindTopDocuments("white green cat -long tail"s);
+        ASSERT_EQUAL(found_docs.size(), 1u);
+        const Document& doc0 = found_docs[0];
+        ASSERT_EQUAL(doc0.id, doc_id1);
+    }
+}
+
+void TestMatchDocument() {
+    const int doc_id = 1;
+    const string content = "a colorful parrot with green wings and red tail is lost"s;
+    const vector<int> ratings = { 1, 2, 3 };
+    {
+        SearchServer server;
+        server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+        server.SetStopWords("is are was a an in the with near"s);
+        const auto [words, status] = server.MatchDocument("white cat -long tail"s, doc_id);
+        ASSERT_EQUAL(words.size(), 1u);
+
+        const auto [words1, status1] = server.MatchDocument("white cat -long -tail"s, doc_id);
+        ASSERT_EQUAL(words1.size(), 0u);
+    }
+}
+
+void TestSortRel() {
+    const int doc_id1 = 1;
+    const string content1 = "a colorful parrot with green wings and red tail is lost"s;
+    const vector<int> ratings1 = { 1, 2, 3 };
+    const int doc_id2 = 2;
+    const string content2 = "a grey hound with black ears is found at the railway station"s;
+    const vector<int> ratings2 = { 2, 3, 4 };
+    const int doc_id3 = 3;
+    const string content3 = "a white cat with long furry tail is found near the red square"s;
+    const vector<int> ratings3 = { 3, 4, 5 };
+    {
+        SearchServer server;
+        server.AddDocument(doc_id1, content1, DocumentStatus::ACTUAL, ratings1);
+        server.AddDocument(doc_id2, content2, DocumentStatus::ACTUAL, ratings2);
+        server.AddDocument(doc_id3, content3, DocumentStatus::ACTUAL, ratings3);
+        server.SetStopWords("is are was a an in the with near"s);
+        const auto found_docs = server.FindTopDocuments("white green cat long tail"s);
+        const Document& doc0 = found_docs[0];
+        ASSERT_EQUAL(doc0.id, doc_id3);
+        const Document& doc1 = found_docs[1];
+        ASSERT_EQUAL(doc1.id, doc_id1);
+    }
+}
+
+void TestCalcRating() {
+    const int doc_id = 3;
+    const string content = "a white cat with long furry tail is found near the red square"s;
+    const vector<int> ratings = { 3, 4, 5 };
+    {
+        SearchServer server;
+        server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+        server.SetStopWords("is are was a an in the with near"s);
+        const auto found_docs = server.FindTopDocuments("white green cat long tail"s);
+        const Document& doc0 = found_docs[0];
+        ASSERT_EQUAL(doc0.rating, 4u);
+    }
+}
+
+void TestPredicate() {
+
+    const int doc_id = 1;
+    const string content = "a colorful parrot with green wings and red tail is lost"s;
+    const vector<int> ratings = { 1, 2, 3 };
+
+    const int doc_id2 = 2;
+    const string content2 = "a grey hound with black ears is found at the railway station tail"s;
+    const vector<int> ratings2 = { 2, 3, 4 };
+
+    const int doc_id3 = 3;
+    const string content3 = "a white cat with long furry tail is found near the red square"s;
+    const vector<int> ratings3 = { 3, 4, 5, 6 };
+
+    {
+        SearchServer server;
+        server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+        server.AddDocument(doc_id2, content2, DocumentStatus::IRRELEVANT, ratings2);
+        server.AddDocument(doc_id3, content3, DocumentStatus::REMOVED, ratings3);
+
+        const auto found_docs = server.FindTopDocuments("white cat long tail"s, [](int document_id, DocumentStatus status, int rating) { return document_id % 3 == 0; });
+        ASSERT_EQUAL(found_docs[0].id, 3u);
+        const auto found_docs1 = server.FindTopDocuments("white cat long tail"s, [](int document_id, DocumentStatus status, int rating) { return status == DocumentStatus::IRRELEVANT; });
+        ASSERT_EQUAL(found_docs1[0].id, 2u);
+        const auto found_docs2 = server.FindTopDocuments("white cat long tail"s, [](int document_id, DocumentStatus status, int rating) { return rating > 2; });
+        ASSERT_EQUAL(found_docs2[0].id, 3u);
+        ASSERT_EQUAL(found_docs2[1].id, 2u);
+    }
+}
+
+void TestStatus() {
+
+    const int doc_id = 42;
+    const string content = "cat in the city"s;
+    const vector<int> ratings = { 1, 2, 3 };
+
+    const int doc_id2 = 43;
+    const string content2 = "cat and dog in the home"s;
+    const vector<int> ratings2 = { 3, 3, 3 };
+
+    const int doc_id3 = 44;
+    const string content3 = "cat and dog in the black box"s;
+    const vector<int> ratings3 = { 4, 4, 4 };
+
+    {
+        SearchServer server;
+        server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+        server.AddDocument(doc_id2, content2, DocumentStatus::IRRELEVANT, ratings);
+        server.AddDocument(doc_id3, content3, DocumentStatus::REMOVED, ratings);
+        const auto found_docs = server.FindTopDocuments("cat"s, DocumentStatus::IRRELEVANT);
+        ASSERT_EQUAL(found_docs.size(), 1u);
+        ASSERT_EQUAL(found_docs[0].id, 43u);
+        const auto found_docs2 = server.FindTopDocuments("cat"s, DocumentStatus::REMOVED);
+        ASSERT_EQUAL(found_docs2.size(), 1u);
+        ASSERT_EQUAL(found_docs2[0].id, 44u);
+    }
+}
+
+void TestCountingRelevansIsCorrect() {
+
+    const int doc_id = 42;
+    const string content = "cat in the city"s;
+    const vector<int> ratings = { 1, 2, 3 };
+
+    const int doc_id2 = 43;
+    const string content2 = "cat and dog in the home"s;
+    const vector<int> ratings2 = { 3, 3, 3 };
+
+    const int doc_id3 = 44;
+    const string content3 = "cat and dog in the black box"s;
+    const vector<int> ratings3 = { 4, 4, 4 };
+
+    {
+        SearchServer server;
+        server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+        server.AddDocument(doc_id2, content2, DocumentStatus::ACTUAL, ratings);
+        server.AddDocument(doc_id3, content3, DocumentStatus::ACTUAL, ratings);
+        const auto found_docs = server.FindTopDocuments("cat dog -city"s, DocumentStatus::ACTUAL);
+        ASSERT_EQUAL(found_docs.size(), 2u);
+        ASSERT_EQUAL(found_docs[0].id, 43u);
+        ASSERT_EQUAL(found_docs[1].id, 44u);
+    }
+}
+
+// Функция TestSearchServer является точкой входа для запуска тестов
+void TestSearchServer() {
+    RUN_TEST(TestExcludeStopWordsFromAddedDocumentContent);
+    RUN_TEST(TestAddDocuments);
+    RUN_TEST(TestExludeDocumentsWithMinusWords);
+    RUN_TEST(TestMatchDocument);
+    RUN_TEST(TestSortRel);
+    RUN_TEST(TestCalcRating);
+    RUN_TEST(TestPredicate);
+    RUN_TEST(TestStatus);
+    RUN_TEST(TestCountingRelevansIsCorrect);
+    // Не забудьте вызывать остальные тесты здесь
+}
+
+// --------- Окончание модульных тестов поисковой системы -----------
