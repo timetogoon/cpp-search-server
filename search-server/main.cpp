@@ -155,7 +155,7 @@ private:
         if (ratings.empty()) {
             return 0;
         }
-        int rating_sum = 0;        
+        int rating_sum = 0;
         rating_sum = accumulate(ratings.begin(), ratings.end(), 0);
         return rating_sum / static_cast<int>(ratings.size());
     }
@@ -378,10 +378,10 @@ void TestMatchDocument() {
         server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
         server.SetStopWords("is are was a an in the with near"s);
         const auto [words, status] = server.MatchDocument("white cat -long tail"s, doc_id);
-        
+
         ASSERT_EQUAL(words.size(), 1u);
-        ASSERT_EQUAL(words[0],"tail");
-        ASSERT_EQUAL(static_cast<int>(status), 0);
+        ASSERT_EQUAL(words[0], "tail");
+        ASSERT_EQUAL(static_cast<int>(status), static_cast<int>(DocumentStatus::ACTUAL));
 
         const auto [words1, status1] = server.MatchDocument("white cat -long -tail"s, doc_id);
         ASSERT_EQUAL(words1.size(), 0u);
@@ -405,10 +405,10 @@ void TestSortRel() {
         server.AddDocument(doc_id3, content3, DocumentStatus::ACTUAL, ratings3);
         server.SetStopWords("is are was a an in the with near"s);
         const auto found_docs = server.FindTopDocuments("white green cat long tail"s);
+        ASSERT_EQUAL(found_docs.size(), 2u);
         const Document& doc0 = found_docs[0];
         const Document& doc1 = found_docs[1];
-        ASSERT_EQUAL(doc0.relevance, 0.28471553647019188);
-        ASSERT_EQUAL(doc1.relevance, 0.13673430879784312);    
+        ASSERT(doc0.relevance > doc1.relevance);
     }
 }
 
@@ -519,8 +519,8 @@ void TestCountingRelevansIsCorrect() {
         const auto& tf_idfs1 = ComputeTfIdfs(testvec, "кот"s);
         const auto& tf_idfs2 = ComputeTfIdfs(testvec, "пёс"s);
 
-        ASSERT_EQUAL((found_docs[0].relevance - tf_idfs1.at(1) <EPSILON), (found_docs[0].relevance - tf_idfs1.at(1) < EPSILON));
-        ASSERT_EQUAL((found_docs[1].relevance - tf_idfs1.at(0) < EPSILON), (found_docs[1].relevance - tf_idfs1.at(0) < EPSILON));
+        ASSERT(abs(found_docs[0].relevance - tf_idfs1.at(1)) < EPSILON);
+        ASSERT(abs(found_docs[1].relevance - tf_idfs1.at(0)) < EPSILON);
     }
 }
 
