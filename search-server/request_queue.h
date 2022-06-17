@@ -1,0 +1,45 @@
+#pragma once
+
+#include "search_server.h"
+#include <deque>
+
+class RequestQueue {
+    const SearchServer& member;
+public:
+    RequestQueue(const SearchServer& search_server)
+        : member(search_server)
+    {
+    }
+    // сделаем "обёртки" для всех методов поиска, чтобы сохранять результаты для нашей статистики
+    template <typename DocumentPredicate>
+    std::vector<Document> AddFindRequest(const std::string& raw_query, DocumentPredicate document_predicate) {
+        auto request = member.FindTopDocuments(raw_query, document_predicate);
+        AddRequest(request.size());
+        return request;
+    }
+
+    std::vector<Document> AddFindRequest(const std::string& raw_query, DocumentStatus status);
+
+    std::vector<Document> AddFindRequest(const std::string& raw_query);
+
+    int GetNoResultRequests() const;
+
+private:
+    struct QueryResult {
+        QueryResult() = default;
+
+        QueryResult(int requests)
+            : requests(requests)
+        {
+        }
+
+        int requests = 0;
+    };
+    std::deque<QueryResult> requests_;
+
+    const static int min_in_day_ = 1440;
+
+    int counter_min_ = 0;    
+
+    void AddRequest(int request_size);
+};
