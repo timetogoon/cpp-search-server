@@ -17,8 +17,7 @@ int SearchServer::ComputeAverageRating(const vector<int>& ratings) {
 }
 
 void SearchServer::AddDocument(int document_id, const string& document, DocumentStatus status,
-    const vector<int>& ratings) 
-    try {
+    const vector<int>& ratings) {
     if (document_id <= -1) {
         throw invalid_argument("номер документа отрицательный"s);
     }
@@ -40,28 +39,14 @@ void SearchServer::AddDocument(int document_id, const string& document, Document
         documents_order_.push_back(document_id);
     }
 }
-    catch (const exception& e) {
-        cout << "Ошибка добавления документа "s << document_id << ": "s << e.what() << std::endl;
-    }
-
 
     vector<Document> SearchServer::FindTopDocuments(const string& raw_query, DocumentStatus status) const {
-        try {
             return SearchServer::FindTopDocuments(raw_query, [status](int document_id, DocumentStatus document_status, int rating) {
-                return document_status == status; });
-        }
-        catch (const std::exception& e) {
-            std::cout << "Ошибка поиска: "s << e.what() << std::endl;
-        }
+                return document_status == status; });       
     }
 
-    vector<Document> SearchServer::FindTopDocuments(const string& raw_query) const {
-        try {
-            return FindTopDocuments(raw_query, DocumentStatus::ACTUAL);
-        }
-        catch (const std::exception& e) {
-            std::cout << "Ошибка поиска: "s << e.what() << std::endl;
-        }
+    vector<Document> SearchServer::FindTopDocuments(const string& raw_query) const {       
+            return FindTopDocuments(raw_query, DocumentStatus::ACTUAL);      
     }
 
 int SearchServer::GetDocumentCount() const { 
