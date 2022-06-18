@@ -1,6 +1,8 @@
 #pragma once
 
 #include "search_server.h"
+#include <vector>
+#include <string>
 #include <deque>
 
 class RequestQueue {
@@ -12,11 +14,7 @@ public:
     }
     // сделаем "обёртки" для всех методов поиска, чтобы сохранять результаты для нашей статистики
     template <typename DocumentPredicate>
-    std::vector<Document> AddFindRequest(const std::string& raw_query, DocumentPredicate document_predicate) {
-        auto request = member.FindTopDocuments(raw_query, document_predicate);
-        AddRequest(request.size());
-        return request;
-    }
+    std::vector<Document> AddFindRequest(const std::string& raw_query, DocumentPredicate document_predicate);    
 
     std::vector<Document> AddFindRequest(const std::string& raw_query, DocumentStatus status);
 
@@ -25,21 +23,22 @@ public:
     int GetNoResultRequests() const;
 
 private:
-    struct QueryResult {
-        QueryResult() = default;
-
-        QueryResult(int requests)
-            : requests(requests)
-        {
-        }
-
+    struct QueryResult {   
+        int requesttime = 0;
         int requests = 0;
     };
     std::deque<QueryResult> requests_;
 
-    const static int min_in_day_ = 1440;
+    const static uint64_t min_in_day_ = 1440;
 
-    int counter_min_ = 0;    
+    uint64_t counter_min_ = 0;
 
     void AddRequest(int request_size);
 };
+
+template <typename DocumentPredicate>
+std::vector<Document> RequestQueue::AddFindRequest(const std::string& raw_query, DocumentPredicate document_predicate) {
+    auto request = member.FindTopDocuments(raw_query, document_predicate);
+    RequestQueue::AddRequest(request.size());
+    return request;
+}

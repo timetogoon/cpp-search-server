@@ -1,5 +1,8 @@
 #pragma once
 
+#include <algorithm>
+#include <vector>
+#include <ostream>
 
 template <typename Iterator>
 class IteratorRange {

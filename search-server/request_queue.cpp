@@ -26,10 +26,10 @@ void RequestQueue::AddRequest(int request_size) {
     }
     if (request_size == 0) {
 
-        requests_.push_back(0);
+        RequestQueue::requests_.push_back({ {static_cast<int>(counter_min_)}, { 0 } });
     }
     else
     {
-        requests_.push_back(1);
+        RequestQueue::requests_.push_back({ {static_cast<int>(counter_min_)},{ 1 } });
     }
 }

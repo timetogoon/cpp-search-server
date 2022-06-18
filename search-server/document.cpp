@@ -7,14 +7,8 @@ ostream& operator<<(ostream& out, const Document& document) {
         << "document_id = "s << document.id << ", "s
         << "relevance = "s << document.relevance << ", "s
         << "rating = "s << document.rating << " }"s;
+    out<< endl;
     return out;
-}
-
-void PrintDocument(const Document& document) {
-    cout << "{ "s
-        << "document_id = "s << document.id << ", "s
-        << "relevance = "s << document.relevance << ", "s
-        << "rating = "s << document.rating << " }"s << endl;
 }
 
 void PrintMatchDocumentResult(int document_id, const vector<string>& words, DocumentStatus status) {

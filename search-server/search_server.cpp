@@ -1,5 +1,5 @@
 #include "search_server.h"
-#include <stdexcept>
+#include <numeric>
 
 using namespace std;
 
@@ -17,7 +17,8 @@ int SearchServer::ComputeAverageRating(const vector<int>& ratings) {
 }
 
 void SearchServer::AddDocument(int document_id, const string& document, DocumentStatus status,
-    const vector<int>& ratings) {
+    const vector<int>& ratings) 
+    try {
     if (document_id <= -1) {
         throw invalid_argument("номер документа отрицательный"s);
     }
@@ -39,35 +40,43 @@ void SearchServer::AddDocument(int document_id, const string& document, Document
         documents_order_.push_back(document_id);
     }
 }
-
-vector<Document> SearchServer::FindTopDocuments(const string& raw_query, DocumentStatus status) const {
-    return SearchServer::FindTopDocuments(raw_query, [status](int document_id, DocumentStatus document_status, int rating) {
-        return document_status == status;});
-}
-
-vector<Document> SearchServer::FindTopDocuments(const string& raw_query) const {
-    return FindTopDocuments(raw_query, DocumentStatus::ACTUAL);
-}
-
-int SearchServer::GetDocumentCount() const {
-    if (documents_.size() > 0) {
-        return static_cast<int>(documents_.size());
+    catch (const exception& e) {
+        cout << "ќшибка добавлени€ документа "s << document_id << ": "s << e.what() << std::endl;
     }
-    throw out_of_range("¬аш запрос за пределами существующих значений");
-    return 0;
+
+
+    vector<Document> SearchServer::FindTopDocuments(const string& raw_query, DocumentStatus status) const {
+        try {
+            return SearchServer::FindTopDocuments(raw_query, [status](int document_id, DocumentStatus document_status, int rating) {
+                return document_status == status; });
+        }
+        catch (const std::exception& e) {
+            std::cout << "ќшибка поиска: "s << e.what() << std::endl;
+        }
+    }
+
+    vector<Document> SearchServer::FindTopDocuments(const string& raw_query) const {
+        try {
+            return FindTopDocuments(raw_query, DocumentStatus::ACTUAL);
+        }
+        catch (const std::exception& e) {
+            std::cout << "ќшибка поиска: "s << e.what() << std::endl;
+        }
+    }
+
+int SearchServer::GetDocumentCount() const { 
+        return static_cast<int>(documents_.size());    
 }
 
 int SearchServer::GetDocumentId(int index) const {
-    if (index >= 0 && SearchServer::GetDocumentCount() >= index) {
-        return documents_order_[index];
+    if (!documents_order_.at(index)) {
+       throw out_of_range("¬аш запрос за пределами существующих значений"s);
     }
-    throw out_of_range("¬аш запрос за пределами существующих значений");
-    return INVALID_DOCUMENT_ID;
+    return documents_order_[index];
 }
 
 tuple<vector<string>, DocumentStatus> SearchServer::MatchDocument(const string& raw_query, int document_id) const {
     const Query query = SearchServer::ParseQuery(raw_query);
-
     vector<string> matched_words;
     for (const string& word : query.plus_words) {
         if (word_to_document_freqs_.count(word) == 0) {
@@ -129,29 +138,32 @@ SearchServer::QueryWord SearchServer::ParseQueryWord(const string& text) const {
 }
 
 SearchServer::Query SearchServer::ParseQuery(const string& text) const {
-    SearchServer::Query query;
-    if (!IsValidWord(text)) {
-        throw invalid_argument("в словах запроса есть какие-то кракоз€бры"s);
-    }
-    for (const string& word : SplitIntoWords(text)) {
-        if (SearchServer::IsntRightWord(word)) {
-            const SearchServer::QueryWord query_word = SearchServer::ParseQueryWord(word);
-            if (!query_word.is_stop) {
-                if (query_word.is_minus) {
-                    query.minus_words.insert(query_word.data);
-                }
-                else {
-                    query.plus_words.insert(query_word.data);
+        SearchServer::Query query;
+        if (!IsValidWord(text)) {
+            throw invalid_argument("в словах запроса есть какие-то кракоз€бры"s);
+        }
+        for (const string& word : SplitIntoWords(text)) {
+            if (SearchServer::IsntRightWord(word)) {
+                const SearchServer::QueryWord query_word = SearchServer::ParseQueryWord(word);
+                if (!query_word.is_stop) {
+                    if (query_word.is_minus) {
+                        query.minus_words.insert(query_word.data);
+                    }
+                    else {
+                        query.plus_words.insert(query_word.data);
+                    }
                 }
             }
+            else
+            {
+                query.minus_words.clear();
+                query.plus_words.clear();
+                throw invalid_argument("в словах запроса ошибка: либо два и больше минусов перед словом, либо после минуса нет слов"s);
+            }
         }
-        else
-        {
-            query.minus_words.clear();
-            query.plus_words.clear();
-            throw invalid_argument("в словах запроса ошибка: либо два и больше минусов перед словом, либо после минуса нет слов"s);
-        }
-    }
-    return query;
+        return query;
 }
+
+    
+
 
