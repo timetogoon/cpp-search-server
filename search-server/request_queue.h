@@ -24,10 +24,12 @@ public:
 
 private:
     struct QueryResult {   
-        int requesttime = 0;
+        int request_time = 0;
         int requests = 0;
     };
     std::deque<QueryResult> requests_;
+
+    int empty_requests_count = 0;
 
     const static uint64_t min_in_day_ = 1440;
 
