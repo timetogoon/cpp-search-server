@@ -20,7 +20,8 @@ int RequestQueue::GetNoResultRequests() const {
 
 void RequestQueue::AddRequest(int request_size) {
     ++counter_min_;
-    if (counter_min_ > min_in_day_) {
+    if (counter_min_ > min_in_day_)
+    {
         auto& request = requests_.front();
         if (request.requests == 0) {
             --empty_requests_count;
@@ -31,7 +32,8 @@ void RequestQueue::AddRequest(int request_size) {
         ++empty_requests_count;
         RequestQueue::requests_.push_back({ {static_cast<int>(counter_min_)}, { 0 } });
     }
-    else {
+    else
+    {
         RequestQueue::requests_.push_back({ {static_cast<int>(counter_min_)},{ 1 } });
     }
 }
