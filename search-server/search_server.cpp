@@ -1,5 +1,6 @@
 #include "search_server.h"
 #include <numeric>
+#include <cmath>
 
 using namespace std;
 
@@ -34,9 +35,11 @@ void SearchServer::AddDocument(int document_id, const string& document, Document
         const double inv_word_count = 1.0 / words.size();
         for (const string& word : words) {
             word_to_document_freqs_[word][document_id] += inv_word_count;
+            document_words_freqs_[document_id][word] += static_cast<double>(count(words.begin(), words.end(), word)) / static_cast<int>(words.size());
         }
+
         documents_.emplace(document_id, DocumentData{ SearchServer::ComputeAverageRating(ratings), status });
-        documents_order_.push_back(document_id);
+        documents_order_.insert(document_id);
     }
 }
 
@@ -53,11 +56,12 @@ int SearchServer::GetDocumentCount() const {
         return static_cast<int>(documents_.size());    
 }
 
-int SearchServer::GetDocumentId(int index) const {
-    if (!documents_order_.at(index)) {
-       throw out_of_range("¬аш запрос за пределами существующих значений"s);
-    }
-    return documents_order_[index];
+set<int>::const_iterator SearchServer::begin() const {
+    return documents_order_.begin();
+}
+
+set<int>::const_iterator SearchServer::end() const {
+    return documents_order_.end();
 }
 
 tuple<vector<string>, DocumentStatus> SearchServer::MatchDocument(const string& raw_query, int document_id) const {
@@ -149,6 +153,24 @@ SearchServer::Query SearchServer::ParseQuery(const string& text) const {
         return query;
 }
 
-    
+const map<string, double>& SearchServer::GetWordFrequencies(int document_id) const {
+    static map<string, double> temp = {};
+    if (documents_order_.count(document_id) == 0) {
+        return temp;
+    }
+    else
+    {
+        return document_words_freqs_.at(document_id);
+    }
+}
 
-
+void SearchServer::RemoveDocument(int document_id) {
+    auto& docwords = SearchServer::GetWordFrequencies(document_id);
+    for (auto& docword : docwords)
+    {
+        word_to_document_freqs_.at(docword.first).erase(document_id);        
+    }
+    document_words_freqs_.erase(document_id);
+    documents_order_.erase(find(documents_order_.begin(), documents_order_.end(),document_id));
+    documents_.erase(document_id);
+}

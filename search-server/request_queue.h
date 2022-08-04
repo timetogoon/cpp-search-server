@@ -29,7 +29,7 @@ private:
     };
     std::deque<QueryResult> requests_;
 
-    int empty_request;
+    int empty_requests_count = 0;
 
     const static uint64_t min_in_day_ = 1440;
 

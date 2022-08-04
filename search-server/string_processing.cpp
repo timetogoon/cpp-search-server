@@ -22,6 +22,3 @@ vector<string> SplitIntoWords(const string& text) {
 
     return words;
 }
-
-
-
