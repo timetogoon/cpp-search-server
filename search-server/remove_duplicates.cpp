@@ -3,10 +3,10 @@
 using namespace std;
 
 void RemoveDuplicates(SearchServer& search_server) {
-    map<set<string>, int> word_to_document_freqs;   
+    map<set<string_view>, int> word_to_document_freqs;   
     set<int> documents_to_delete;
     for (const int document_id : search_server) {    
-        set<string> words;
+        set<string_view> words;
         for (auto& wordsandfreqs : search_server.GetWordFrequencies(document_id)) 
         {
             words.insert(wordsandfreqs.first);

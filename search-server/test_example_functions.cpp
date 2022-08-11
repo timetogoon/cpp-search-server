@@ -211,7 +211,7 @@ void TestCountingRelevansIsCorrect() {
         auto wordsTest1 = SplitIntoWords(content);
         auto wordsTest2 = SplitIntoWords(content2);
         auto wordsTest3 = SplitIntoWords(content3);
-        vector<vector<string>> testvec;
+        vector<vector<string_view>> testvec;
         testvec.push_back(wordsTest1);
         testvec.push_back(wordsTest2);
         testvec.push_back(wordsTest3);
