@@ -43,6 +43,6 @@
 
 и 
 
-*TestSearchServer(); *
+*TestSearchServer();*
 
 в int main(){}
